@@ -12,6 +12,16 @@ utenti, con SQLite o PostgreSQL.
 
 © 2026 Massimo Antonini — licenza [MIT](LICENSE).
 
+**Indice** · [Avvio rapido](#avvio-rapido-sviluppo) ·
+[Sestante.exe](#versione-locale-sestanteexe) ·
+[Docker](#installazione-server-con-docker) ·
+[Kubernetes](#installazione-su-kubernetes) ·
+[Utente di default](#utente-di-default) ·
+[Cosa fa](#cosa-fa-e-chi-lo-fa) · [Struttura](#struttura) ·
+[Configurazione](#configurazione) · [Comandi](#comandi) · [Test](#test) ·
+[Requisiti e documentazione](#requisiti-e-documentazione) ·
+[Limiti noti](#limiti-noti-dichiarati) · [Licenze](#licenze)
+
 ---
 
 ## Avvio rapido (sviluppo)
@@ -85,6 +95,9 @@ In alternativa il relay gira come processo a sé, in un secondo terminale, con
 
 In sviluppo il client si aggiorna a caldo (Vite HMR) e il server si riavvia da
 solo a ogni modifica (`tsx watch`); sessioni e dati sopravvivono al riavvio.
+Database, file caricati e segreti generati stanno in `.out/data/`; tutto ciò
+che si genera (sorgente e build di GeoLibre, pacchetti, report dei test) sta in
+`.out/`, che si può cancellare: `npm run setup` lo ricostruisce.
 
 Per verificare che tutto funzioni davvero, la guida di collaudo passo per passo
 è in [`docs/guida/COLLAUDO.md`](docs/guida/COLLAUDO.md).
@@ -243,6 +256,13 @@ dev'essere comunque vostro:
   salvati e ripristinati attraverso il ponte di stato `geolibre:*` — lo stesso
   che alimenta il widget Python di GeoLibre — su SQLite oppure PostgreSQL. Vedi
   [`docs/sviluppo/ARCHITETTURA.md`](docs/sviluppo/ARCHITETTURA.md).
+- **Sicurezza lato server.** Ogni permesso si decide sul server, in un solo
+  punto (`acl.ts`): a chi non ha accesso una mappa risulta inesistente (404).
+  Sessioni firmate in cookie HttpOnly e SameSite, blocco dopo troppi tentativi
+  d'accesso, input validato (un campo del tipo sbagliato è un 400, mai un
+  errore del server), intestazioni contro clickjacking e MIME sniffing, file
+  caricati riserializzati e serviti sempre come dati. I casi d'abuso sono
+  test automatici ([`tests/security/`](tests/security)).
 
 ---
 
@@ -389,6 +409,27 @@ servizio si prova solo da un terminale amministratore con `E2E_SERVICE=1`.
 
 ---
 
+## Requisiti e documentazione
+
+I **requisiti** sono issue GitHub con etichetta `requisito`, raccolte nel
+Project [Requisiti di Sestante](https://github.com/users/antus/projects/1)
+con area, copertura, stima e priorità: chiunque abbia accesso al repository li
+crea, discute e chiude. Come sono organizzati è in
+[`docs/requisiti/`](docs/requisiti/README.md); un requisito nuovo si apre dal
+modulo **Requisito** (Issues → New issue).
+
+| Documento | Per |
+| --- | --- |
+| [`docs/guida/CONFIGURAZIONE.md`](docs/guida/CONFIGURAZIONE.md) | tutte le variabili di configurazione |
+| [`docs/guida/COLLAUDO.md`](docs/guida/COLLAUDO.md) | il collaudo passo per passo, anche dopo un cambio di versione di GeoLibre |
+| [`docs/sviluppo/ARCHITETTURA.md`](docs/sviluppo/ARCHITETTURA.md) | come sono fatti server, client e ponte con GeoLibre |
+| [`docs/sviluppo/PR-GEOLIBRE-COLLAB.md`](docs/sviluppo/PR-GEOLIBRE-COLLAB.md) | la modifica proposta a GeoLibre per la collaborazione |
+| [`docs/adr/`](docs/adr/README.md) | le decisioni architetturali e il loro perché |
+| [`distribution/README.md`](distribution/README.md) | quale distribuzione scegliere |
+| [`tests/README.md`](tests/README.md) | tutti i test, dove stanno e come si lanciano |
+
+---
+
 ## Limiti noti, dichiarati
 
 **Tema e lingua rimontano la mappa.** GeoLibre riceve `theme` e `lang` come
@@ -425,6 +466,17 @@ vengono ancora usate.
 un'allowlist che includa Sestante), i GeoJSON si incorporano nel progetto con un
 tetto di 4 MB, la collaborazione resta fuori dalla mappa, e Share e Galleria
 puntano a `share.geolibre.app`.
+
+**Difetti aperti, trovati dai test di sicurezza.** Nessuno dà accesso a dati
+altrui; restano da correggere:
+
+- un editor che apre un link d'invito da lettore diventa lettore;
+- la ricerca degli utenti non tratta `%` come testo: `%%` elenca utenti
+  dell'istanza, otto alla volta;
+- il registro dei tentativi d'accesso falliti si svuota solo quando si
+  riprova la stessa email: tentativi su molte email diverse lo fanno crescere;
+- la scansione ZAP esplora solo le pagine raggiungibili senza JavaScript; per
+  il resto dell'app servirà la sua modalità con browser (AJAX spider).
 
 ---
 
