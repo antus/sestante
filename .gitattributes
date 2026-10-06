@@ -1,4 +1,4 @@
 # Script eseguiti nei container Linux: sempre LF, anche su un checkout Windows.
 *.sh text eol=lf
 Dockerfile text eol=lf
-deploy/caddy/Caddyfile text eol=lf
+distribution/docker/caddy/Caddyfile text eol=lf

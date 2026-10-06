@@ -1,23 +1,16 @@
 node_modules/
 dist/
-data/
 .env
 *.log
 .DS_Store
 Thumbs.db
 
-# GeoLibre: sorgente scaricato, build e pacchetti (scripts/build-geolibre.mjs, build-exe.mjs)
-.cache/
-geolibre-dist/
-release/
-.build-geolibre.log
+# Tutto ciò che si genera: dati dello sviluppo, sorgente e build di GeoLibre,
+# pacchetti, risultati dei test. Si può cancellare: si ricostruisce.
+.out/
 
 # Configurazione locale del compose (contiene i segreti)
-deploy/.env
-
-# Risultati dei test e2e
-e2e/report/
-e2e/results/
+distribution/docker/.env
 
 # Configurazione locale dell'eseguibile (può contenere segreti)
 sestante.env

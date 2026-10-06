@@ -1,0 +1,16 @@
+# Cluster kind per provare il chart in locale (vedi distribution/kubernetes/README.md).
+#   kind create cluster --name sestante --config distribution/kubernetes/kind-cluster.yaml
+# L'ingress risponde su http://localhost:9080 e https://localhost:9443.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - { containerPort: 80, hostPort: 9080, protocol: TCP }
+      - { containerPort: 443, hostPort: 9443, protocol: TCP }

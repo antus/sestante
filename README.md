@@ -50,14 +50,14 @@ Poi apri <http://localhost:5173> e accedi con una delle utenze di esempio —
 `npm run setup` si può rilanciare quando si vuole: salta ciò che è già fatto,
 **non ricrea un database esistente** (per quello c'è `npm run db:reset`) e
 ricompila GeoLibre solo se manca o se è cambiata la versione in
-`geolibre/geolibre.lock.json`. La prima volta scarica GeoLibre e ne installa le
-dipendenze (qualche minuto, circa 2,4 GB in `.cache/`). Con
+`build/geolibre/geolibre.lock.json`. La prima volta scarica GeoLibre e ne installa le
+dipendenze (qualche minuto, circa 2,4 GB in `.out/cache/`). Con
 `npm run setup -- --skip-geolibre` si salta quel passo: Sestante incorpora
 allora l'istanza pubblica `web.geolibre.app` e funziona lo stesso, con i limiti
 descritti più sotto.
 
 **Versione di GeoLibre.** Se non se ne indica un'altra, `setup` usa quella
-fissata in [`geolibre/geolibre.lock.json`](geolibre/geolibre.lock.json): oggi il
+fissata in [`build/geolibre/geolibre.lock.json`](build/geolibre/geolibre.lock.json): oggi il
 commit `0692da3` di `main` del 18 settembre 2026, che si dichiara 3.0.0 ma è
 successivo alla release v3.0.0. Per cambiarla:
 
@@ -70,7 +70,7 @@ npm run setup                       # ricompila GeoLibre con la versione nuova
 
 Nel lock finisce sempre l'hash del commit, così il build è ripetibile anche se
 un tag o un ramo si spostano. Dopo un cambio di versione va ripetuto il collaudo
-di [`docs/COLLAUDO.md`](docs/COLLAUDO.md).
+di [`docs/guida/COLLAUDO.md`](docs/guida/COLLAUDO.md).
 
 Per la collaborazione serve il relay di GeoLibre. Il modo più semplice è farlo
 ospitare dal server stesso, con una riga nel `.env`:
@@ -87,7 +87,7 @@ In sviluppo il client si aggiorna a caldo (Vite HMR) e il server si riavvia da
 solo a ogni modifica (`tsx watch`); sessioni e dati sopravvivono al riavvio.
 
 Per verificare che tutto funzioni davvero, la guida di collaudo passo per passo
-è in [`docs/COLLAUDO.md`](docs/COLLAUDO.md).
+è in [`docs/guida/COLLAUDO.md`](docs/guida/COLLAUDO.md).
 
 ---
 
@@ -95,7 +95,7 @@ Per verificare che tutto funzioni davvero, la guida di collaudo passo per passo
 
 ```bash
 npm run setup            # se non già fatto: serve il build di GeoLibre
-npm run build:exe        # → release/Sestante-<versione>-win32-x64.zip
+npm run build:exe        # → .out/release/Sestante-<versione>-win32-x64.zip
 ```
 
 Lo zip (circa 120 MB) contiene:
@@ -153,7 +153,7 @@ volta e ne verifica l'impronta SHA-256; WinSW non è firmato digitalmente.
 ## Installazione server con Docker
 
 ```bash
-cd deploy
+cd distribution/docker
 copy .env.example .env        # e cambia i segreti
 docker compose up -d --build
 ```
@@ -161,21 +161,21 @@ docker compose up -d --build
 Avvia Sestante (modalità `server`, PostgreSQL), Keycloak con il realm già
 configurato, il relay di collaborazione e Caddy come unico ingresso HTTPS su
 <https://localhost:8443>. Dettagli, certificati, backup e pubblicazione su un
-dominio vero in [`deploy/README.md`](deploy/README.md).
+dominio vero in [`distribution/docker/README.md`](distribution/docker/README.md).
 
 ## Installazione su Kubernetes
 
-Chart Helm in [`deploy/helm/sestante`](deploy/helm/sestante): Sestante,
+Chart Helm in [`distribution/kubernetes/sestante`](distribution/kubernetes/sestante): Sestante,
 PostgreSQL, Keycloak con il realm già configurato, il relay e gli Ingress per
 nginx. I segreti si generano al primo `install` e restano negli aggiornamenti.
 
 ```bash
-helm install sestante deploy/helm/sestante -n sestante --create-namespace \
+helm install sestante distribution/kubernetes/sestante -n sestante --create-namespace \
   --set host=mappe.example.org --set image.repository=registry.example.org/sestante
 ```
 
 Immagine, valori, servizi esterni e prova in locale con kind in
-[`deploy/helm/README.md`](deploy/helm/README.md).
+[`distribution/kubernetes/README.md`](distribution/kubernetes/README.md).
 
 ## Utente di default
 
@@ -188,7 +188,7 @@ password cambiata.
 | --- | --- | --- |
 | sviluppo (`npm run setup`) | — | ci sono già gli utenti di esempio (`sestante2026`) |
 | `Sestante.exe`, servizio Windows | `admin@example.org` | `sestante2026` |
-| Docker | `DEFAULT_USER_EMAIL` di `deploy/.env` | `DEFAULT_USER_PASSWORD` di `deploy/.env`; vuota = generata e scritta una volta nel log |
+| Docker | `DEFAULT_USER_EMAIL` di `distribution/docker/.env` | `DEFAULT_USER_PASSWORD` di `distribution/docker/.env`; vuota = generata e scritta una volta nel log |
 | Kubernetes | `defaultUser.email` | `defaultUser.password`; vuota = generata e conservata nel Secret |
 
 Si configura con `DEFAULT_USER_EMAIL`, `DEFAULT_USER_NAME`,
@@ -210,7 +210,7 @@ va compilato per quel percorso: `npm run setup` e `npm run build:geolibre`
 leggono `APP_BASE` o `PUBLIC_URL` dal `.env`, e il server all'avvio controlla
 che il build corrisponda. Se non corrisponde lo dice chiaramente e usa
 l'istanza pubblica invece di servire una mappa che non si caricherebbe. Con
-Docker basta `SESTANTE_APP_BASE` in `deploy/.env`.
+Docker basta `SESTANTE_APP_BASE` in `distribution/docker/.env`.
 
 ---
 
@@ -242,34 +242,52 @@ dev'essere comunque vostro:
 - **Persistenza del progetto.** Livelli, stili, basemap e camera vengono
   salvati e ripristinati attraverso il ponte di stato `geolibre:*` — lo stesso
   che alimenta il widget Python di GeoLibre — su SQLite oppure PostgreSQL. Vedi
-  [`docs/ARCHITETTURA.md`](docs/ARCHITETTURA.md).
+  [`docs/sviluppo/ARCHITETTURA.md`](docs/sviluppo/ARCHITETTURA.md).
 
 ---
 
 ## Struttura
 
+Ogni cartella di primo livello ha un solo ruolo.
+
 ```
 sestante/
-├─ server/                API Fastify + SQLite (node:sqlite) o PostgreSQL (pg)
-│  ├─ src/auth/           password scrypt, sessioni firmate, OIDC Keycloak
-│  ├─ src/routes/         auth, mappe, condivisione, file, collaborazione, GeoLibre su /gis/
-│  ├─ src/acl.ts          i permessi, in un unico posto
-│  ├─ src/db.ts           SQLite e PostgreSQL dietro la stessa interfaccia
-│  ├─ src/relay-host.ts   il server come host di una sessione (inviti, sostituzione)
-│  ├─ src/geolibre-bridge.ts  l'aggancio della collaborazione dentro GeoLibre
-│  ├─ src/paths.ts        percorsi in sviluppo e nell'eseguibile
-│  └─ test/               identityToken, ACL, autenticazione, livello dati
-├─ web/                   client React + Vite
-│  ├─ src/lib/            api, i18n IT/EN, tema, presenza e ponte con GeoLibre
-│  ├─ src/components/
-│  └─ src/screens/        Login, Dashboard, Editor
-├─ geolibre/              versione fissata, opzioni di build e plugin di GeoLibre
-├─ scripts/               setup, sviluppo, relay, versione e build di GeoLibre, eseguibile
-├─ packaging/windows/     servizio Windows (configurazione WinSW, installazione)
-├─ deploy/                Docker compose e chart Helm: Caddy/Ingress, Keycloak, PostgreSQL, relay
-├─ e2e/                   test end-to-end, per requisito (local, stack, dist)
-├─ Dockerfile             immagine di Sestante (e del relay)
-└─ docs/                  architettura, configurazione, collaudo, proposta di PR a GeoLibre
+├─ src/                      CODICE SORGENTE (workspace npm)
+│  ├─ server/                API Fastify + SQLite (node:sqlite) o PostgreSQL (pg)
+│  │  ├─ src/auth/           password scrypt, sessioni firmate, OIDC Keycloak
+│  │  ├─ src/routes/         auth, mappe, condivisione, file, collaborazione, GeoLibre su /gis/
+│  │  ├─ src/acl.ts          i permessi, in un unico posto
+│  │  ├─ src/db.ts           SQLite e PostgreSQL dietro la stessa interfaccia
+│  │  ├─ src/relay-host.ts   il server come host di una sessione (inviti, sostituzione)
+│  │  ├─ src/geolibre-bridge.ts  l'aggancio della collaborazione dentro GeoLibre
+│  │  ├─ src/paths.ts        percorsi in sviluppo e nell'eseguibile
+│  │  └─ test/unit/          identityToken, ACL, autenticazione, livello dati
+│  ├─ web/                   client React + Vite
+│  │  ├─ src/lib/            api, i18n IT/EN, tema, presenza e ponte con GeoLibre
+│  │  ├─ src/components/
+│  │  └─ src/screens/        Login, Dashboard, Editor
+│  └─ plugins/               plugin GeoLibre di Sestante, uno per cartella
+├─ tests/                    TEST DI SISTEMA, sull'applicazione avviata (mappa in tests/README.md)
+│  └─ e2e/                   end-to-end per requisito: local, stack, dist
+├─ docs/                     DOCUMENTAZIONE
+│  ├─ guida/                 configurazione, collaudo
+│  ├─ sviluppo/              architettura, proposta di PR a GeoLibre
+│  ├─ adr/                   decisioni architetturali
+│  └─ requisiti/             dove stanno i requisiti (GitHub Issues e Project)
+├─ distribution/             COME SI DISTRIBUISCE, per destinazione (vedi distribution/README.md)
+│  ├─ portable/              Sestante.exe + zip portabile
+│  ├─ windows-service/       servizio Windows con WinSW
+│  ├─ docker/                Dockerfile, compose con Caddy, Keycloak, PostgreSQL e relay
+│  └─ kubernetes/            chart Helm, cluster kind di prova
+├─ build/                    STRUMENTI DI BUILD E SVILUPPO
+│  ├─ geolibre/              versione fissata (geolibre.lock.json) e opzioni di build
+│  └─ scripts/               setup, sviluppo, relay, versione e build di GeoLibre, requisiti
+└─ .out/                     GENERATO, ignorato da git: si può cancellare e si ricostruisce
+   ├─ cache/                 sorgente di GeoLibre, WinSW, strumenti
+   ├─ geolibre/              build di GeoLibre e relay
+   ├─ release/               eseguibile e zip
+   ├─ data/                  database e file dello sviluppo
+   └─ e2e/                   report e risultati dei test end-to-end
 ```
 
 ---
@@ -304,7 +322,7 @@ spenta, e l'applicazione dichiara da sola cosa è attivo.
 | Segreto di sessione | generato al primo avvio in `DATA_DIR` | va configurato, altrimenti non parte |
 | Cookie `Secure` | solo se `PUBLIC_URL` è https | solo se `PUBLIC_URL` è https |
 
-Dettagli in [`docs/CONFIGURAZIONE.md`](docs/CONFIGURAZIONE.md).
+Dettagli in [`docs/guida/CONFIGURAZIONE.md`](docs/guida/CONFIGURAZIONE.md).
 
 ---
 
@@ -316,7 +334,7 @@ Dettagli in [`docs/CONFIGURAZIONE.md`](docs/CONFIGURAZIONE.md).
 | `npm run dev`            | server + client in sviluppo, con ricaricamento automatico         |
 | `npm run geolibre:use`   | mostra o cambia la versione di GeoLibre (release, ramo o commit)  |
 | `npm run build:geolibre` | build di GeoLibre a versione fissata, plugin e relay inclusi      |
-| `npm run relay`          | avvia il relay di GeoLibre da `geolibre-dist/relay/relay.cjs`     |
+| `npm run relay`          | avvia il relay di GeoLibre da `.out/geolibre/relay/relay.cjs`     |
 | `npm test`               | test di identityToken, permessi, autenticazione e livello dati, su SQLite e su PostgreSQL (PGlite) |
 | `npm run build`          | compila server e client per la produzione                         |
 | `npm start`              | avvia la build (il server serve client e GeoLibre)                |
@@ -341,18 +359,18 @@ I test e2e sono ordinati per requisito, un file ciascuno:
 
 | Requisito | Dove |
 | --- | --- |
-| accesso locale (registrazione, credenziali errate, uscita) | `e2e/local/auth.spec.ts` |
-| accesso con Keycloak, uscita che chiude anche l'SSO | `e2e/stack/sso.spec.ts` |
-| creare mappe, caricare dati, ritrovarli riaprendo | `e2e/local/maps.spec.ts` |
-| condividere con ruoli, accesso generale, inviti; permessi fatti rispettare dal server | `e2e/local/sharing.spec.ts` |
-| modificare insieme in tempo reale, con ruoli e identità | `e2e/local/collaboration.spec.ts` |
-| GeoLibre senza fork e senza CDN, configurato dal server | `e2e/local/geolibre.spec.ts` |
-| lingua e tema propagati alla mappa | `e2e/local/preferences.spec.ts` |
-| installazione server: PostgreSQL, HTTPS, relay via proxy | `e2e/stack/server.spec.ts` |
-| pubblicazione sotto un percorso | `e2e/stack/base-path.spec.ts` |
-| utente di default nelle installazioni server | `e2e/stack/default-user.spec.ts` |
-| eseguibile per un singolo utente, con il suo utente di default | `e2e/dist/exe.spec.ts` |
-| servizio Windows | `e2e/dist/windows-service.spec.ts` |
+| accesso locale (registrazione, credenziali errate, uscita) | `tests/e2e/local/auth.spec.ts` |
+| accesso con Keycloak, uscita che chiude anche l'SSO | `tests/e2e/stack/sso.spec.ts` |
+| creare mappe, caricare dati, ritrovarli riaprendo | `tests/e2e/local/maps.spec.ts` |
+| condividere con ruoli, accesso generale, inviti; permessi fatti rispettare dal server | `tests/e2e/local/sharing.spec.ts` |
+| modificare insieme in tempo reale, con ruoli e identità | `tests/e2e/local/collaboration.spec.ts` |
+| GeoLibre senza fork e senza CDN, configurato dal server | `tests/e2e/local/geolibre.spec.ts` |
+| lingua e tema propagati alla mappa | `tests/e2e/local/preferences.spec.ts` |
+| installazione server: PostgreSQL, HTTPS, relay via proxy | `tests/e2e/stack/server.spec.ts` |
+| pubblicazione sotto un percorso | `tests/e2e/stack/base-path.spec.ts` |
+| utente di default nelle installazioni server | `tests/e2e/stack/default-user.spec.ts` |
+| eseguibile per un singolo utente, con il suo utente di default | `tests/e2e/dist/exe.spec.ts` |
+| servizio Windows | `tests/e2e/dist/windows-service.spec.ts` |
 
 Su Windows i test usano Edge, già installato; altrove il Chromium di
 Playwright (`npx playwright install chromium`). L'installazione reale del
@@ -372,9 +390,9 @@ aperti.
 **La collaborazione nella mappa passa da un aggancio.** GeoLibre non offre
 ancora un modo supportato per entrare in una sessione da fuori con identità e
 ruolo: lo fa uno script che Sestante serve nella configurazione di GeoLibre
-(`server/src/geolibre-bridge.ts`), senza toccarne il codice. I punti di GeoLibre
+(`src/server/src/geolibre-bridge.ts`), senza toccarne il codice. I punti di GeoLibre
 su cui si appoggia sono verificati a ogni `build:geolibre`. La proposta per
-renderlo superfluo è in [`docs/PR-GEOLIBRE-COLLAB.md`](docs/PR-GEOLIBRE-COLLAB.md).
+renderlo superfluo è in [`docs/sviluppo/PR-GEOLIBRE-COLLAB.md`](docs/sviluppo/PR-GEOLIBRE-COLLAB.md).
 
 **Un ruolo ridotto si vede alla ricarica.** Se un editor diventa lettore mentre
 ha la mappa aperta, esce subito dalla sessione e vi rientra in sola lettura, ma

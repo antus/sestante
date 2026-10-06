@@ -1,20 +1,13 @@
 {
   "files.watcherExclude": {
     "**/node_modules/**": true,
-    "**/vendor/**": true,
-    "**/data/**": true,
-    "**/.cache/**": true,
-    "**/geolibre-dist/**": true,
-    "**/release/**": true
+    "**/.out/**": true
   },
   "search.exclude": {
     "**/node_modules": true,
-    "**/vendor": true,
-    "**/.cache": true,
-    "**/geolibre-dist": true,
-    "**/release": true
+    "**/.out": true
   },
-  "python.analysis.exclude": ["**/vendor/**", "**/.cache/**", "**/node_modules/**"],
+  "python.analysis.exclude": ["**/.out/**", "**/node_modules/**"],
   "gradle.autoDetect": "off",
   "java.import.gradle.enabled": false,
   "java.import.maven.enabled": false
