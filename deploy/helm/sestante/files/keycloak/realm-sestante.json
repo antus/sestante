@@ -1,0 +1,47 @@
+{
+  "realm": "sestante",
+  "displayName": "Sestante",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["it", "en"],
+  "defaultLocale": "it",
+  "clients": [
+    {
+      "clientId": "sestante",
+      "name": "Sestante",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["${SESTANTE_URL}api/auth/keycloak/callback"],
+      "webOrigins": ["${SESTANTE_ORIGIN}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${SESTANTE_URL}*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "anna.verdi",
+      "email": "anna.verdi@example.org",
+      "firstName": "Anna",
+      "lastName": "Verdi",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "${DEMO_USER_PASSWORD}", "temporary": false }
+      ]
+    }
+  ]
+}

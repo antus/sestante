@@ -1,0 +1,39 @@
+# Unico ingresso pubblico di Sestante.
+#
+# La porta HTTPS interna coincide con quella pubblicata (8443 di default): così
+# gli indirizzi sono identici dentro e fuori dal container, e i reindirizzamenti
+# da http puntano alla porta giusta.
+#
+# Tutto vive sotto SESTANTE_APP_BASE ("/" oppure, ad esempio, "/sestante/"):
+# l'app, Keycloak (<base>auth) e il relay (<base>collab). Il resto dell'host
+# resta libero per altri servizi.
+{
+	https_port {$SESTANTE_HTTPS_PORT}
+}
+
+{$SESTANTE_HOST}:{$SESTANTE_HTTPS_PORT} {
+	# "internal": certificato firmato dalla CA locale di Caddy (sviluppo, intranet).
+	# Un indirizzo email: certificato Let's Encrypt per un dominio pubblico.
+	tls {$CADDY_TLS}
+
+	# Relay di collaborazione: wss://<host><base>collab/sessions/<codice>/ws
+	handle_path {$SESTANTE_APP_BASE}collab/* {
+		reverse_proxy relay:8787
+	}
+
+	# Keycloak, servito sotto <base>auth (KC_HTTP_RELATIVE_PATH).
+	handle {$SESTANTE_APP_BASE}auth/* {
+		reverse_proxy keycloak:8080
+	}
+
+	# L'app: client, API e GeoLibre su <base>gis/. Il prefisso lo toglie Sestante.
+	handle {$SESTANTE_APP_BASE}* {
+		reverse_proxy sestante:4000
+	}
+
+	# Fuori dal percorso dell'app (solo se non è "/"): si va all'app.
+	handle {
+		# "*" esplicito: un primo argomento che inizia con "/" sarebbe letto come filtro.
+		redir * {$SESTANTE_APP_BASE} 302
+	}
+}

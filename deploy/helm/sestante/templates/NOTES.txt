@@ -1,0 +1,26 @@
+Sestante è installato: {{ include "sestante.url" . }}
+{{- if .Values.keycloak.enabled }}
+Keycloak:              {{ include "sestante.url" . }}auth/admin  (utente {{ .Values.keycloak.adminUser }})
+{{- end }}
+
+{{- if .Values.defaultUser.enabled }}
+
+Utente di default di Sestante (creato al primo avvio, a database vuoto):
+  email:    {{ .Values.defaultUser.email }}
+  password: kubectl get secret {{ include "sestante.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath='{.data.default-user-password}' | base64 -d
+{{- end }}
+{{- if and .Values.keycloak.enabled .Values.keycloak.demoUser.enabled }}
+
+Utente di prova del realm (accesso con SSO):
+  utente:   anna.verdi
+  password: kubectl get secret {{ include "sestante.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath='{.data.demo-user-password}' | base64 -d
+{{- end }}
+{{- if .Values.keycloak.enabled }}
+
+Amministratore di Keycloak:
+  password: kubectl get secret {{ include "sestante.secretName" . }} -n {{ .Release.Namespace }} -o jsonpath='{.data.keycloak-admin-password}' | base64 -d
+{{- end }}
+
+Nota: l'immagine {{ .Values.image.repository }}:{{ .Values.image.tag }} deve essere stata costruita con
+APP_BASE={{ include "sestante.base" . }}: GeoLibre fissa il percorso nel proprio build. Se non
+coincide, Sestante lo segnala nel log e usa l'istanza pubblica di GeoLibre.

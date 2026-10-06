@@ -1,0 +1,107 @@
+{{- if .Values.keycloak.enabled }}
+{{- $name := printf "%s-keycloak" (include "sestante.fullname" .) }}
+{{- $base := include "sestante.base" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "sestante.selector" (dict "root" . "component" "keycloak") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "sestante.selector" (dict "root" . "component" "keycloak") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "sestante.selector" (dict "root" . "component" "keycloak") | nindent 8 }}
+      annotations:
+        # Il realm si importa all'avvio: se cambia, il pod si ricrea.
+        checksum/realm: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: keycloak
+          image: {{ .Values.keycloak.image }}
+          args: ["start", "--import-realm"]
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: {{ .Values.keycloak.adminUser | quote }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ include "sestante.secretName" . }}, key: keycloak-admin-password } }
+            - name: KC_DB
+              value: postgres
+            {{- if .Values.postgresql.enabled }}
+            - name: KC_DB_URL
+              value: jdbc:postgresql://{{ include "sestante.fullname" . }}-postgres:5432/keycloak
+            - name: KC_DB_USERNAME
+              value: keycloak
+            {{- else }}
+            - name: KC_DB_URL
+              value: {{ required "postgresql.external.keycloakJdbcUrl è obbligatorio" .Values.postgresql.external.keycloakJdbcUrl | quote }}
+            - name: KC_DB_USERNAME
+              value: {{ .Values.postgresql.external.keycloakUser | quote }}
+            {{- end }}
+            - name: KC_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ include "sestante.secretName" . }}, key: postgres-password } }
+            # Indirizzo pubblico fisso (l'`iss` dei token è quello del browser),
+            # raggiunto in rete interna dagli altri pod (backchannel).
+            - name: KC_HOSTNAME
+              value: {{ printf "%sauth" (include "sestante.url" .) | quote }}
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            - name: KC_HTTP_RELATIVE_PATH
+              value: {{ printf "%sauth" $base | quote }}
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            # Segnaposto del realm importato.
+            - name: SESTANTE_URL
+              value: {{ include "sestante.url" . | quote }}
+            - name: SESTANTE_ORIGIN
+              value: {{ include "sestante.origin" . | quote }}
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: {{ include "sestante.secretName" . }}, key: keycloak-client-secret } }
+            - name: DEMO_USER_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ include "sestante.secretName" . }}, key: demo-user-password } }
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: management, containerPort: 9000 }
+          startupProbe:
+            httpGet: { path: {{ printf "%sauth/health/started" $base }}, port: management }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: {{ printf "%sauth/health/ready" $base }}, port: management }
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+      volumes:
+        - name: realm
+          configMap:
+            name: {{ include "sestante.fullname" . }}-realm
+{{- end }}

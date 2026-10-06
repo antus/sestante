@@ -1,0 +1,43 @@
+<!--
+  Sestante come servizio Windows, tramite WinSW (https://github.com/winsw/winsw).
+
+  Sestante.exe è un normale programma: il gestore dei servizi di Windows
+  richiede invece un protocollo apposito, e chiude dopo circa 30 secondi un
+  eseguibile che non lo parla. WinSW (sestante-service.exe, accanto a questo
+  file) parla quel protocollo, avvia Sestante.exe, lo riavvia se si ferma e ne
+  raccoglie i log. Lo installa install-service.ps1.
+-->
+<service>
+  <id>sestante</id>
+  <name>Sestante</name>
+  <description>Sestante - spazio di lavoro cartografico multi-utente (http://localhost:4000)</description>
+
+  <executable>%BASE%\..\Sestante.exe</executable>
+  <workingdirectory>%BASE%\..</workingdirectory>
+
+  <!-- Da servizio: nessun browser da aprire, porta fissa, dati di sistema. -->
+  <env name="SESTANTE_NO_BROWSER" value="1" />
+  <env name="PORT" value="4000" />
+  <env name="DATA_DIR" value="%ProgramData%\Sestante" />
+
+  <!-- Account con privilegi minimi; install-service.ps1 gli dà accesso a DATA_DIR. -->
+  <serviceaccount>
+    <domain>NT AUTHORITY</domain>
+    <user>LocalService</user>
+  </serviceaccount>
+
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <stoptimeout>15 sec</stoptimeout>
+
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="2 min" />
+  <resetfailure>1 hour</resetfailure>
+
+  <logpath>%ProgramData%\Sestante\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</service>

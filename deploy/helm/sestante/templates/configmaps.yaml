@@ -1,0 +1,32 @@
+{{- if .Values.keycloak.enabled }}
+{{- /*
+Il realm è lo stesso file usato dal compose (files/keycloak/realm-sestante.json).
+Senza utente di prova lo si toglie qui; i segnaposto ${…} li sostituisce
+Keycloak all'importazione, con le variabili d'ambiente del suo container.
+*/}}
+{{- $realm := .Files.Get "files/keycloak/realm-sestante.json" | fromJson }}
+{{- if not .Values.keycloak.demoUser.enabled }}
+{{- $_ := unset $realm "users" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sestante.fullname" . }}-realm
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+data:
+  realm-sestante.json: |
+    {{- toPrettyJson $realm | nindent 4 }}
+{{- end }}
+{{- if .Values.postgresql.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sestante.fullname" . }}-postgres-init
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+data:
+  init.sh: |
+    {{- .Files.Get "files/postgres/init.sh" | nindent 4 }}
+{{- end }}

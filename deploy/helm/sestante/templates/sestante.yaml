@@ -1,0 +1,127 @@
+{{- $name := include "sestante.fullname" . }}
+{{- $secret := include "sestante.secretName" . }}
+{{- $base := include "sestante.base" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "sestante.selector" (dict "root" . "component" "app") | nindent 4 }}
+  ports:
+    - name: http
+      port: 4000
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-data
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+spec:
+  accessModes: [{{ .Values.sestante.storage.accessMode | quote }}]
+  {{- with .Values.sestante.storage.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.sestante.storage.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.sestante.replicas }}
+  {{- if eq .Values.sestante.storage.accessMode "ReadWriteOnce" }}
+  strategy: { type: Recreate }
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sestante.selector" (dict "root" . "component" "app") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "sestante.selector" (dict "root" . "component" "app") | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: { fsGroup: 1000 }
+      containers:
+        - name: sestante
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - { name: SESTANTE_MODE, value: server }
+            - name: PUBLIC_URL
+              value: {{ include "sestante.url" . | quote }}
+            - name: SESSION_SECRET
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: session-secret } }
+            {{- if .Values.postgresql.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: postgres-password } }
+            - name: DATABASE_URL
+              value: "postgres://sestante:$(POSTGRES_PASSWORD)@{{ $name }}-postgres:5432/sestante"
+            {{- else }}
+            - name: DATABASE_URL
+              value: {{ required "postgresql.external.sestanteUrl è obbligatorio" .Values.postgresql.external.sestanteUrl | quote }}
+            {{- end }}
+            - name: ALLOW_LOCAL_SIGNUP
+              value: {{ .Values.sestante.allowLocalSignup | quote }}
+            - { name: ORG_DOMAIN, value: {{ .Values.sestante.orgDomain | quote }} }
+            - { name: ORG_LABEL, value: {{ .Values.sestante.orgLabel | quote }} }
+            {{- if .Values.defaultUser.enabled }}
+            - { name: DEFAULT_USER_EMAIL, value: {{ .Values.defaultUser.email | quote }} }
+            - { name: DEFAULT_USER_NAME, value: {{ .Values.defaultUser.name | quote }} }
+            - name: DEFAULT_USER_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: default-user-password } }
+            {{- else }}
+            - { name: DEFAULT_USER, value: "off" }
+            {{- end }}
+            - name: KEYCLOAK_ISSUER
+              value: {{ include "sestante.issuer" . | quote }}
+            {{- if .Values.keycloak.enabled }}
+            - name: KEYCLOAK_INTERNAL_ISSUER
+              value: "http://{{ $name }}-keycloak:8080{{ $base }}auth/realms/sestante"
+            - { name: KEYCLOAK_CLIENT_ID, value: sestante }
+            {{- else }}
+            - { name: KEYCLOAK_CLIENT_ID, value: {{ .Values.keycloak.external.clientId | quote }} }
+            {{- end }}
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: keycloak-client-secret } }
+            - name: KEYCLOAK_REDIRECT_URI
+              value: {{ printf "%sapi/auth/keycloak/callback" (include "sestante.url" .) | quote }}
+            {{- if .Values.relay.enabled }}
+            - name: COLLAB_URL
+              value: "http://{{ $name }}-relay:8787"
+            - name: COLLAB_PUBLIC_URL
+              value: {{ printf "%scollab" (include "sestante.url" .) | replace "https://" "wss://" | replace "http://" "ws://" | quote }}
+            - name: COLLAB_IDENTITY_SECRET
+              valueFrom: { secretKeyRef: { name: {{ $secret }}, key: collab-identity-secret } }
+            {{- end }}
+            {{- with .Values.sestante.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - { name: http, containerPort: 4000 }
+          readinessProbe:
+            httpGet: { path: /api/config, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/config, port: http }
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.sestante.resources | nindent 12 }}
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $name }}-data

@@ -1,0 +1,21 @@
+# Prodotti locali: dentro l'immagine si ricostruiscono da zero.
+node_modules
+**/node_modules
+server/dist
+web/dist
+.cache
+geolibre-dist
+release
+data
+**/*.tsbuildinfo
+
+# Segreti e configurazione locale
+.env
+**/.env
+sestante.env
+
+# Strumenti
+.vscode
+.git
+*.log
+deploy/.env

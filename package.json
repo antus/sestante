@@ -1,0 +1,38 @@
+{
+  "name": "sestante",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sestante — spazio di lavoro cartografico multi-utente su motore GeoLibre",
+  "author": "Massimo Antonini <massimo.anto@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "db:reset": "npm run db:reset -w @sestante/server",
+    "dev": "node scripts/check-node.mjs && node scripts/dev.mjs",
+    "dev:server": "npm run dev -w @sestante/server",
+    "dev:web": "npm run dev -w @sestante/web",
+    "build": "npm run build -w @sestante/server && npm run build -w @sestante/web",
+    "start": "node scripts/check-node.mjs && npm run start -w @sestante/server",
+    "test": "npm run test -w @sestante/server && npm run test:pg -w @sestante/server",
+    "relay": "node scripts/relay.mjs",
+    "build:geolibre": "node scripts/build-geolibre.mjs",
+    "build:exe": "node scripts/build-exe.mjs",
+    "geolibre:use": "node scripts/geolibre-use.mjs",
+    "test:e2e": "playwright test -c e2e/local.config.ts",
+    "test:e2e:stack": "playwright test -c e2e/stack.config.ts",
+    "test:e2e:dist": "playwright test -c e2e/dist.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

@@ -1,0 +1,25 @@
+{{- /*
+Certificato autofirmato, solo con ingress.tls.selfSigned e senza un Secret
+indicato: per prove e reti interne. Si conserva negli aggiornamenti, così il
+browser non vede cambiare certificato a ogni `helm upgrade`.
+*/ -}}
+{{- if and .Values.ingress.tls.enabled .Values.ingress.tls.selfSigned (not .Values.ingress.tls.secretName) }}
+{{- $secretName := printf "%s-tls" (include "sestante.fullname" .) }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secretName }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+type: kubernetes.io/tls
+data:
+  {{- if $existing }}
+  tls.crt: {{ index $existing.data "tls.crt" }}
+  tls.key: {{ index $existing.data "tls.key" }}
+  {{- else }}
+  {{- $cert := genSelfSignedCert .Values.host nil (list .Values.host) 825 }}
+  tls.crt: {{ $cert.Cert | b64enc }}
+  tls.key: {{ $cert.Key | b64enc }}
+  {{- end }}
+{{- end }}

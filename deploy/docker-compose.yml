@@ -1,0 +1,162 @@
+# Sestante in modalità server, con tutto ciò che gli serve.
+#
+#   cd deploy
+#   copy .env.example .env      (e cambia i segreti)
+#   docker compose up -d --build
+#
+# Poi https://localhost:8443 (certificato della CA locale di Caddy: il browser
+# avvisa finché non la si considera attendibile, vedi deploy/README.md).
+#
+#   caddy     unico ingresso, TLS. /auth → Keycloak, /collab → relay, il resto → Sestante
+#   sestante  API, client e GeoLibre su /gis/
+#   relay     collaborazione di GeoLibre (stessa immagine di Sestante)
+#   keycloak  accesso con SSO, realm "sestante" importato al primo avvio
+#   postgres  database di Sestante e di Keycloak
+#
+# Una sola origine pubblica per tutto: SESTANTE_URL. I servizi fra loro si
+# parlano in rete interna (http://keycloak:8080, http://relay:8787).
+
+name: sestante
+
+services:
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    ports:
+      - "${SESTANTE_HTTP_PORT:-8080}:80"
+      - "${SESTANTE_HTTPS_PORT:-8443}:${SESTANTE_HTTPS_PORT:-8443}"
+    environment:
+      SESTANTE_HOST: ${SESTANTE_HOST:-localhost}
+      SESTANTE_HTTPS_PORT: ${SESTANTE_HTTPS_PORT:-8443}
+      # "internal" = certificato della CA locale di Caddy; un'email = Let's Encrypt.
+      CADDY_TLS: ${CADDY_TLS:-internal}
+      SESTANTE_APP_BASE: ${SESTANTE_APP_BASE:-/}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      sestante:
+        condition: service_healthy
+
+  sestante:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        APP_BASE: ${SESTANTE_APP_BASE:-/}
+    image: sestante:${SESTANTE_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      SESTANTE_MODE: server
+      PUBLIC_URL: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}
+      SESSION_SECRET: ${SESSION_SECRET:?imposta SESSION_SECRET in deploy/.env}
+      DATABASE_URL: postgres://sestante:${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}@postgres:5432/sestante
+      ALLOW_LOCAL_SIGNUP: ${ALLOW_LOCAL_SIGNUP:-false}
+      ORG_DOMAIN: ${ORG_DOMAIN:-example.org}
+      ORG_LABEL: ${ORG_LABEL:-example.org}
+      KEYCLOAK_ISSUER: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}auth/realms/sestante
+      KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080${SESTANTE_APP_BASE:-/}auth/realms/sestante
+      KEYCLOAK_CLIENT_ID: sestante
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?imposta KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_REDIRECT_URI: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}api/auth/keycloak/callback
+      COLLAB_URL: http://relay:8787
+      COLLAB_PUBLIC_URL: wss://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}collab
+      COLLAB_IDENTITY_SECRET: ${COLLAB_IDENTITY_SECRET:?imposta COLLAB_IDENTITY_SECRET}
+      # Utente di default, creato al primo avvio (database vuoto). Senza
+      # password ne viene generata una, scritta una volta nel log di sestante.
+      DEFAULT_USER_EMAIL: ${DEFAULT_USER_EMAIL:-admin@example.org}
+      DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:-}
+    volumes:
+      - sestante-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      relay:
+        condition: service_started
+
+  relay:
+    # Stessa immagine di Sestante, con un altro comando: la build è in cache.
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        APP_BASE: ${SESTANTE_APP_BASE:-/}
+    image: sestante:${SESTANTE_VERSION:-latest}
+    restart: unless-stopped
+    command: ["node", "geolibre-dist/relay/relay.cjs"]
+    environment:
+      PORT: "8787"
+      HOST: 0.0.0.0
+      COLLAB_DB_PATH: /data/collab.sqlite
+      COLLAB_IDENTITY_SECRET: ${COLLAB_IDENTITY_SECRET:?imposta COLLAB_IDENTITY_SECRET}
+      ALLOWED_ORIGINS: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}
+      # Dietro Caddy: l'IP del client per i limiti di frequenza viene da X-Forwarded-For.
+      TRUST_PROXY: "true"
+    volumes:
+      - relay-data:/data
+    healthcheck:
+      disable: true
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    restart: unless-stopped
+    command: ["start", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?imposta KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}
+      # Indirizzo pubblico fisso, così l'`iss` dei token è sempre quello che il
+      # browser vede; i container lo raggiungono in rete interna (backchannel).
+      KC_HOSTNAME: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}auth
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_RELATIVE_PATH: ${SESTANTE_APP_BASE:-/}auth
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      # Valori sostituiti nel realm importato (helm/sestante/files/keycloak/realm-sestante.json).
+      # Con la barra finale: <origine><base>.
+      SESTANTE_URL: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}${SESTANTE_APP_BASE:-/}
+      SESTANTE_ORIGIN: https://${SESTANTE_HOST:-localhost}:${SESTANTE_HTTPS_PORT:-8443}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?imposta KEYCLOAK_CLIENT_SECRET}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
+    volumes:
+      - ./helm/sestante/files/keycloak:/opt/keycloak/data/import:ro
+    healthcheck:
+      # L'immagine non ha curl: si apre la porta di gestione con il bash di sistema.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET %s/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' \"$$KC_HTTP_RELATIVE_PATH\" >&3 && grep -q '\"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}
+      APP_DB_PASSWORD: ${POSTGRES_PASSWORD:?imposta POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./helm/sestante/files/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sestante"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  caddy-data:
+  caddy-config:
+  sestante-data:
+  relay-data:
+  postgres-data:

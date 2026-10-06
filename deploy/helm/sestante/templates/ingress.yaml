@@ -1,0 +1,91 @@
+{{- $name := include "sestante.fullname" . }}
+{{- $base := include "sestante.base" . }}
+{{- $tlsSecret := default (printf "%s-tls" $name) .Values.ingress.tls.secretName }}
+{{- define "sestante.ingressTls" }}
+{{- if .root.Values.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ .root.Values.host | quote }}]
+      secretName: {{ .secret }}
+{{- end }}
+{{- end }}
+# App e Keycloak, sotto il percorso dell'app. Il prefisso lo toglie Sestante,
+# Keycloak lo ha come KC_HTTP_RELATIVE_PATH: nessuna riscrittura qui.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "70m"
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- include "sestante.ingressTls" (dict "root" . "secret" $tlsSecret) }}
+  rules:
+    - host: {{ .Values.host | quote }}
+      http:
+        paths:
+          {{- if .Values.keycloak.enabled }}
+          - path: {{ printf "%sauth" $base }}
+            pathType: Prefix
+            backend: { service: { name: {{ $name }}-keycloak, port: { number: 8080 } } }
+          {{- end }}
+          - path: {{ $base }}
+            pathType: Prefix
+            backend: { service: { name: {{ $name }}, port: { number: 4000 } } }
+{{- if .Values.relay.enabled }}
+---
+# Relay: wss://host<base>collab/sessions/<codice>/ws → relay:/sessions/<codice>/ws
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}-relay
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # Le connessioni WebSocket restano aperte per tutta la sessione.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- include "sestante.ingressTls" (dict "root" . "secret" $tlsSecret) }}
+  rules:
+    - host: {{ .Values.host | quote }}
+      http:
+        paths:
+          - path: {{ printf "%scollab(/|$)(.*)" $base }}
+            pathType: ImplementationSpecific
+            backend: { service: { name: {{ $name }}-relay, port: { number: 8787 } } }
+{{- end }}
+{{- if ne $base "/" }}
+---
+# Fuori dal percorso dell'app: si torna all'app.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}-root
+  labels:
+    {{- include "sestante.labels" . | nindent 4 }}
+  annotations:
+    # Indirizzo completo: un percorso relativo nginx lo completa senza la porta.
+    nginx.ingress.kubernetes.io/permanent-redirect: {{ include "sestante.url" . | quote }}
+    nginx.ingress.kubernetes.io/permanent-redirect-code: "302"
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- include "sestante.ingressTls" (dict "root" . "secret" $tlsSecret) }}
+  rules:
+    - host: {{ .Values.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: {{ $name }}, port: { number: 4000 } } }
+{{- end }}

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: sestante
+description: Sestante — spazio di lavoro cartografico multi-utente su motore GeoLibre, con PostgreSQL, Keycloak e relay di collaborazione.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/
+maintainers:
+  - name: Massimo Antonini
+    email: massimo.anto@gmail.com
+keywords:
+  - gis
+  - geolibre
+  - maps
+  - collaboration

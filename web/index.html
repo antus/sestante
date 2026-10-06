@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sestante</title>
+    <script>
+      // Applica il tema salvato prima del primo paint, così non si vede il
+      // lampo chiaro su un'app impostata su scuro.
+      (function () {
+        try {
+          const saved = JSON.parse(localStorage.getItem("sestante.prefs") || "{}");
+          const mode = saved.theme || "system";
+          const dark =
+            mode === "dark" ||
+            (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.add(dark ? "theme-dark" : "theme-light");
+          if (saved.accent && saved.accent !== "blue")
+            document.documentElement.setAttribute("data-accent", saved.accent);
+          if (saved.locale) document.documentElement.lang = saved.locale;
+        } catch (_) {
+          document.documentElement.classList.add("theme-light");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

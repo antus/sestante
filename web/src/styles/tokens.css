@@ -1,0 +1,115 @@
+/* ============================================================================
+   Token di design — presi da GeoLibre (packages/ui/src/globals.css).
+   Non sono una reinterpretazione: sono gli stessi valori, così la chrome di
+   Sestante e la mappa GeoLibre incorporata leggono come un unico prodotto.
+   Aggiornandoli da upstream, l'intera applicazione si riallinea.
+   ============================================================================ */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 220 16% 96%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 220 16% 96%;
+  --muted-foreground: 215.4 16.3% 40%;
+  --accent: 220 16% 94%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --success: 142.1 76.2% 36.3%;
+  --warning: 24.6 95% 53.1%;
+  --border: 220 15% 88%;
+  --input: 220 13% 76%;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 0.375rem;
+  --elev-penumbra: hsl(220 40% 12% / 0.06);
+  --elev-umbra: hsl(220 40% 12% / 0.1);
+  /* Superfici cartografiche, usate dalle anteprime e dallo sfondo dell'editor. */
+  --map-water: 205 48% 88%;
+  --map-land: 45 16% 95%;
+  --map-line: 220 14% 68%;
+  --map-graticule: 220 14% 80%;
+  color-scheme: light;
+}
+
+/* La modalità scura di GeoLibre è una scala di elevazione esplicita:
+   9% tela, 12% barre e pannelli, 15% menu e dialoghi, 20% riempimenti
+   incassati, 22% hover. Ogni coppia testo/superficie supera WCAG AA. */
+:root.theme-dark {
+  --background: 222 24% 9%;
+  --foreground: 210 40% 98%;
+  --card: 222 22% 12%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 21% 15%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 220 18% 20%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 220 18% 20%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 220 18% 22%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 84.2% 72%;
+  --destructive-foreground: 222.2 47.4% 11.2%;
+  --success: 142.1 70.6% 45.3%;
+  --warning: 32 95% 60%;
+  --border: 220 14% 26%;
+  --input: 220 12% 38%;
+  --ring: 217.2 91.2% 59.8%;
+  --elev-penumbra: hsl(0 0% 0% / 0.4);
+  --elev-umbra: hsl(0 0% 0% / 0.55);
+  --map-water: 212 30% 13%;
+  --map-land: 220 13% 19%;
+  --map-line: 220 10% 38%;
+  --map-graticule: 220 10% 27%;
+  color-scheme: dark;
+}
+
+/* Schemi d'accento: ritingono solo i token che portano l'accento, mai i
+   neutri. Identici ai preset di GeoLibre. */
+:root[data-accent="violet"] {
+  --primary: 262.1 83.3% 57.8%;
+  --primary-foreground: 210 20% 98%;
+  --ring: 262.1 83.3% 57.8%;
+}
+:root.theme-dark[data-accent="violet"] {
+  --primary: 263.4 70% 50.4%;
+  --primary-foreground: 210 20% 98%;
+  --ring: 263.4 70% 50.4%;
+}
+:root[data-accent="emerald"] {
+  --primary: 142.1 76.2% 36.3%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --ring: 142.1 76.2% 36.3%;
+}
+:root.theme-dark[data-accent="emerald"] {
+  --primary: 142.1 70.6% 45.3%;
+  --primary-foreground: 144.9 80.4% 10%;
+  --ring: 142.1 70.6% 45.3%;
+}
+:root[data-accent="rose"] {
+  --primary: 346.8 77.2% 49.8%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --ring: 346.8 77.2% 49.8%;
+}
+:root.theme-dark[data-accent="rose"] {
+  --primary: 346.8 77.2% 49.8%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --ring: 346.8 77.2% 49.8%;
+}
+:root[data-accent="amber"] {
+  --primary: 24.6 95% 53.1%;
+  --primary-foreground: 26 83.3% 14.1%;
+  --ring: 24.6 95% 53.1%;
+}
+:root.theme-dark[data-accent="amber"] {
+  --primary: 20.5 90.2% 48.2%;
+  --primary-foreground: 26 83.3% 14.1%;
+  --ring: 20.5 90.2% 48.2%;
+}

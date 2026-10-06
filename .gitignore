@@ -1,0 +1,27 @@
+node_modules/
+dist/
+data/
+.env
+*.log
+.DS_Store
+Thumbs.db
+
+# GeoLibre: sorgente scaricato, build e pacchetti (scripts/build-geolibre.mjs, build-exe.mjs)
+.cache/
+geolibre-dist/
+release/
+.build-geolibre.log
+
+# Configurazione locale del compose (contiene i segreti)
+deploy/.env
+
+# Risultati dei test e2e
+e2e/report/
+e2e/results/
+
+# Configurazione locale dell'eseguibile (può contenere segreti)
+sestante.env
+
+# File di lavoro
+*.tsbuildinfo
+*.bak
