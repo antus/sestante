@@ -6,7 +6,7 @@ accettata e il commit in `build/geolibre/geolibre.lock.json` la includerà,
 l'aggancio in `src/server/src/geolibre-bridge.ts` si potrà togliere (vedi "Dopo la
 PR", in fondo).
 
-Riferimenti verificati sul commit `0692da3f` (GeoLibre 3.0.0).
+Riferimenti verificati su GeoLibre v3.3.0 (commit `c2a74d5`).
 
 ---
 

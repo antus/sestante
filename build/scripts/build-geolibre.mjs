@@ -13,6 +13,7 @@
  *   node build/scripts/build-geolibre.mjs --skip-build     solo plugin + copia del dist esistente
  */
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -87,7 +88,9 @@ if (dirty) {
 // punti del suo codice che dà per scontati. Se un aggiornamento li cambia, il
 // build si ferma qui invece di produrre una collaborazione che non entra.
 const bridgeAnchors = [
-  ["apps/geolibre-desktop/src/components/layout/DesktopShell.tsx", 'get("collab")', "apertura del dialogo da ?collab="],
+  // Da GeoLibre 3.3.0 sta in un hook a sé (prima era in DesktopShell.tsx).
+  ["apps/geolibre-desktop/src/hooks/desktop-shell/useCollabShareLinkAutoOpen.ts", 'get("collab")', "apertura del dialogo da ?collab="],
+  ["apps/geolibre-desktop/src/components/layout/DesktopShell.tsx", "useCollabShareLinkAutoOpen(collaboration", "uso dell'apertura da ?collab="],
   ["apps/geolibre-desktop/src/components/layout/CollaborateDialog.tsx", 'id="collab-name"', "campo del nome"],
   ["apps/geolibre-desktop/src/components/layout/CollaborateDialog.tsx", 'id="collab-code"', "campo del codice"],
   ["apps/geolibre-desktop/src/components/layout/CollaborateDialog.tsx", "await api.join(code.trim()", "ingresso dal pulsante del dialogo"],
@@ -110,9 +113,21 @@ if (missing.length) {
 }
 
 // ── 2. Dipendenze ───────────────────────────────────────────────────────────
-if (!existsSync(join(src, "node_modules"))) {
-  step("Installo le dipendenze di GeoLibre (la prima volta richiede qualche minuto)");
+// Si reinstallano quando cambia il package-lock di GeoLibre, non solo la prima
+// volta: dopo un cambio di versione il codice nuovo con le dipendenze vecchie
+// non compila. L'impronta dell'ultimo lock installato sta in node_modules.
+const lockFile = join(src, "package-lock.json");
+const installedMarker = join(src, "node_modules", ".sestante-lock-sha256");
+const lockHash = createHash("sha256").update(readFileSync(lockFile)).digest("hex");
+const installedHash = existsSync(installedMarker) ? readFileSync(installedMarker, "utf8").trim() : null;
+if (installedHash !== lockHash) {
+  step(
+    existsSync(join(src, "node_modules"))
+      ? "Le dipendenze di GeoLibre sono cambiate: le reinstallo"
+      : "Installo le dipendenze di GeoLibre (la prima volta richiede qualche minuto)",
+  );
   run("npm", ["ci"], { cwd: src });
+  writeFileSync(installedMarker, `${lockHash}\n`);
 }
 
 // ── 3. Plugin inclusi nel build ─────────────────────────────────────────────
@@ -185,6 +200,10 @@ cpSync(dist, join(out, "web"), { recursive: true });
 for (const { id } of plugins) {
   cpSync(join(pluginsTarget, id), join(out, "web/plugins", id), { recursive: true });
 }
+// Il catalogo dei plugin installabili (VITE_GEOLIBRE_PLUGIN_REGISTRY_URL in
+// build.env): vuoto, così GeoLibre non lo chiede a plugins.geolibre.app. I
+// plugin di Sestante sono già inclusi nel build e non passano di qui.
+writeFileSync(join(out, "web/plugin-registry.json"), "[]\n");
 
 // ── 6. Relay di collaborazione, in un solo file ─────────────────────────────
 // workers/collab-node è il relay self-hosted di GeoLibre. Lo si raccoglie con

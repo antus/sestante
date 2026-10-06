@@ -67,9 +67,8 @@ allora l'istanza pubblica `web.geolibre.app` e funziona lo stesso, con i limiti
 descritti più sotto.
 
 **Versione di GeoLibre.** Se non se ne indica un'altra, `setup` usa quella
-fissata in [`build/geolibre/geolibre.lock.json`](build/geolibre/geolibre.lock.json): oggi il
-commit `0692da3` di `main` del 18 settembre 2026, che si dichiara 3.0.0 ma è
-successivo alla release v3.0.0. Per cambiarla:
+fissata in [`build/geolibre/geolibre.lock.json`](build/geolibre/geolibre.lock.json): oggi la
+release **v3.3.0** del 5 ottobre 2026 (commit `c2a74d5`). Per cambiarla:
 
 ```bash
 npm run geolibre:use                # versione in uso e ultime release disponibili
