@@ -83,8 +83,8 @@ export async function shareRoutes(app: FastifyInstance): Promise<void> {
     if (!found) return reply.code(404).send({ error: "not-found" });
     if (!canManageSharing(found.role)) return reply.code(403).send({ error: "owner-only" });
 
-    const body = (request.body ?? {}) as { email?: string; role?: string };
-    const email = (body.email ?? "").trim().toLowerCase();
+    const body = (request.body ?? {}) as { email?: unknown; role?: string };
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const role = body.role === "editor" ? "editor" : "viewer";
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

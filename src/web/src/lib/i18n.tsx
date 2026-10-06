@@ -12,7 +12,8 @@ import { loadPrefs, savePrefs } from "./prefs";
 
 export type Locale = "it" | "en";
 
-const DICT = {
+/** Esportato per i test: le due lingue devono avere le stesse chiavi. */
+export const DICT = {
   it: {
     "app.tagline": "Piattaforma geospaziale",
     "login.claim": "Le tue mappe, il tuo team, i tuoi dati.",

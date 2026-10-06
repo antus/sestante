@@ -28,7 +28,7 @@ const env = {
   NODE_ENV: "test",
   SESTANTE_MODE: "local",
   PORT: port,
-  HOST: "127.0.0.1",
+  HOST: process.env.E2E_HOST ?? "127.0.0.1",
   PUBLIC_URL: `http://localhost:${port}`,
   DATA_DIR: dataDir,
   DATABASE_PATH: join(dataDir, "sestante.sqlite"),

@@ -5,6 +5,7 @@ import { clearSessionCookie, currentUserId, setSessionCookie, ID_TOKEN_COOKIE, s
 import { passwordProblem, verifyPassword } from "../auth/passwords.js";
 import { completeLogin, endSessionUrl, startLogin } from "../auth/keycloak.js";
 import { createLocalUser, publicUser, userByEmail, userById } from "../users.js";
+import { text } from "../input.js";
 
 /**
  * Limitatore di tentativi in memoria, per chiave (email + IP). Non sostituisce
@@ -50,8 +51,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/api/auth/login", async (request, reply) => {
     const body = (request.body ?? {}) as { email?: string; password?: string };
-    const email = (body.email ?? "").trim().toLowerCase();
-    const password = body.password ?? "";
+    const email = text(body.email).trim().toLowerCase();
+    const password = text(body.password);
     const key = `${email}|${request.ip}`;
 
     if (!email || !password) return reply.code(400).send({ error: "missing-credentials" });
@@ -80,8 +81,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       password?: string;
       displayName?: string;
     };
-    const email = (body.email ?? "").trim().toLowerCase();
-    const password = body.password ?? "";
+    const email = text(body.email).trim().toLowerCase();
+    const password = text(body.password);
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return reply.code(400).send({ error: "invalid-email" });
@@ -90,7 +91,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     if (problem) return reply.code(400).send({ error: problem });
     if (await userByEmail(email)) return reply.code(409).send({ error: "email-taken" });
 
-    const user = await createLocalUser(email, body.displayName ?? "", password);
+    const user = await createLocalUser(email, text(body.displayName), password);
     setSessionCookie(reply, user.id);
     return reply.code(201).send({ user: publicUser(user) });
   });

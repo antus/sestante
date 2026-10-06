@@ -1,0 +1,8 @@
+# Regole della scansione ZAP baseline: id<TAB>WARN|FAIL|IGNORE<TAB>(nome e motivo).
+# Non elencate = WARN. FAIL per ciò che Sestante deve sempre garantire.
+10020	FAIL	(Anti-clickjacking: le pagine non si incorporano altrove)
+10021	FAIL	(X-Content-Type-Options mancante)
+10010	FAIL	(Cookie senza HttpOnly)
+10054	FAIL	(Cookie senza SameSite)
+10038	WARN	(Content-Security-Policy completa solo su /gis/: per l'app c'è frame-ancestors)
+10011	WARN	(Cookie senza Secure: in locale l'app è su http; con https il server lo mette)

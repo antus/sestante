@@ -5,6 +5,7 @@ import { currentUserId } from "../auth/session.js";
 import { canEdit, canManageSharing, loadMapFor } from "../acl.js";
 import { publicUser, userById } from "../users.js";
 import { storage } from "../storage.js";
+import { text } from "../input.js";
 import { resetCollabSession } from "./collab.js";
 
 export async function requireUser(request: FastifyRequest): Promise<UserRow | null> {
@@ -98,10 +99,18 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
     const user = await requireUser(request);
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
 
-    const body = (request.body ?? {}) as { name?: string; description?: string; thumb?: string };
+    const body = (request.body ?? {}) as { name?: unknown; description?: unknown; thumb?: unknown };
+    // Solo testo: un oggetto al posto del nome è una richiesta sbagliata, non
+    // un errore del server.
+    for (const field of ["name", "description", "thumb"] as const) {
+      if (body[field] !== undefined && typeof body[field] !== "string") {
+        return reply.code(400).send({ error: `invalid-${field}` });
+      }
+    }
+    const { name = "", description = "", thumb: wanted = "" } = body as { name?: string; description?: string; thumb?: string };
     const id = newId();
     const timestamp = now();
-    const thumb = THUMBS.includes(body.thumb ?? "") ? (body.thumb as string) : "italia";
+    const thumb = THUMBS.includes(wanted) ? wanted : "italia";
 
     await db().run(
       `INSERT INTO maps (id, owner_id, name, description, project_json, thumb,
@@ -109,8 +118,8 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
        VALUES (?, ?, ?, ?, NULL, ?, 'private', 'viewer', ?, ?)`,
       id,
       user.id,
-      (body.name ?? "").trim() || "Mappa senza titolo",
-      (body.description ?? "").trim(),
+      name.trim() || "Mappa senza titolo",
+      description.trim(),
       thumb,
       timestamp,
       timestamp,
@@ -263,7 +272,7 @@ export async function mapRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/users/search", async (request, reply) => {
     const user = await requireUser(request);
     if (!user) return reply.code(401).send({ error: "unauthenticated" });
-    const { q = "" } = (request.query ?? {}) as { q?: string };
+    const q = text((request.query as { q?: unknown } | undefined)?.q);
     if (q.trim().length < 2) return { items: [] };
 
     // LOWER su entrambi i lati: LIKE ignora le maiuscole in SQLite ma non in

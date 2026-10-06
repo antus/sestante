@@ -207,7 +207,9 @@ export async function fileRoutes(app: FastifyInstance): Promise<void> {
     if (!found) return reply.code(404).send({ error: "not-found" });
     if (!canEdit(found.role)) return reply.code(403).send({ error: "read-only" });
 
-    await db().run("DELETE FROM files WHERE id = ? AND map_id = ?", fileId, id);
+    const result = await db().run("DELETE FROM files WHERE id = ? AND map_id = ?", fileId, id);
+    // Solo un file di questa mappa: un id altrui o inventato non tocca il disco.
+    if (result.changes === 0) return reply.code(404).send({ error: "not-found" });
     await storage.remove(id, fileId);
     await logActivity(id, user.id, "file-deleted", fileId);
     return { ok: true };

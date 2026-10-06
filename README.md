@@ -261,14 +261,17 @@ sestante/
 │  │  ├─ src/relay-host.ts   il server come host di una sessione (inviti, sostituzione)
 │  │  ├─ src/geolibre-bridge.ts  l'aggancio della collaborazione dentro GeoLibre
 │  │  ├─ src/paths.ts        percorsi in sviluppo e nell'eseguibile
-│  │  └─ test/unit/          identityToken, ACL, autenticazione, livello dati
+│  │  └─ test/               unit/ (identityToken, ACL, auth, dati), integration/ (rotte HTTP)
 │  ├─ web/                   client React + Vite
 │  │  ├─ src/lib/            api, i18n IT/EN, tema, presenza e ponte con GeoLibre
 │  │  ├─ src/components/
-│  │  └─ src/screens/        Login, Dashboard, Editor
+│  │  ├─ src/screens/        Login, Dashboard, Editor
+│  │  └─ test/               logica e componenti del client (Vitest)
 │  └─ plugins/               plugin GeoLibre di Sestante, uno per cartella
 ├─ tests/                    TEST DI SISTEMA, sull'applicazione avviata (mappa in tests/README.md)
-│  └─ e2e/                   end-to-end per requisito: local, stack, dist
+│  ├─ e2e/                   end-to-end per requisito: local, stack, dist
+│  ├─ security/              casi d'abuso e scansione OWASP ZAP
+│  └─ performance/           scenari di carico k6
 ├─ docs/                     DOCUMENTAZIONE
 │  ├─ guida/                 configurazione, collaudo
 │  ├─ sviluppo/              architettura, proposta di PR a GeoLibre
@@ -287,7 +290,7 @@ sestante/
    ├─ geolibre/              build di GeoLibre e relay
    ├─ release/               eseguibile e zip
    ├─ data/                  database e file dello sviluppo
-   └─ e2e/                   report e risultati dei test end-to-end
+   └─ e2e/, security/, performance/   report e risultati dei test
 ```
 
 ---
@@ -335,7 +338,7 @@ Dettagli in [`docs/guida/CONFIGURAZIONE.md`](docs/guida/CONFIGURAZIONE.md).
 | `npm run geolibre:use`   | mostra o cambia la versione di GeoLibre (release, ramo o commit)  |
 | `npm run build:geolibre` | build di GeoLibre a versione fissata, plugin e relay inclusi      |
 | `npm run relay`          | avvia il relay di GeoLibre da `.out/geolibre/relay/relay.cjs`     |
-| `npm test`               | test di identityToken, permessi, autenticazione e livello dati, su SQLite e su PostgreSQL (PGlite) |
+| `npm test`               | unitari e integrazione del server (su SQLite e su PostgreSQL) e test del client |
 | `npm run build`          | compila server e client per la produzione                         |
 | `npm start`              | avvia la build (il server serve client e GeoLibre)                |
 | `npm run build:exe`      | `Sestante.exe` + `geolibre/` + `relay/` in uno zip portabile      |
@@ -343,6 +346,9 @@ Dettagli in [`docs/guida/CONFIGURAZIONE.md`](docs/guida/CONFIGURAZIONE.md).
 | `npm run test:e2e`       | test end-to-end in modalità locale (avvia da sé il server)        |
 | `npm run test:e2e:stack` | test end-to-end contro un'installazione server avviata (compose o Kubernetes) |
 | `npm run test:e2e:dist`  | test end-to-end dell'eseguibile e del servizio Windows            |
+| `npm run test:security`  | casi d'abuso: sessioni falsificate, dati altrui, XSS, iniezioni, intestazioni |
+| `npm run test:security:zap` | scansione OWASP ZAP baseline (con Docker)                     |
+| `npm run test:performance` | scenari di carico k6 (con k6 o con Docker)                     |
 
 ---
 
@@ -350,10 +356,15 @@ Dettagli in [`docs/guida/CONFIGURAZIONE.md`](docs/guida/CONFIGURAZIONE.md).
 
 | Livello | Comando | Cosa prova |
 | --- | --- | --- |
-| unitari | `npm test` | identità firmata, permessi, autenticazione, livello dati — su SQLite **e** su PostgreSQL (PGlite) |
+| unitari e integrazione del server | `npm test` | identità firmata, permessi, autenticazione, livello dati; le rotte HTTP con la matrice dei permessi completa — su SQLite **e** su PostgreSQL (PGlite) |
+| client | `npm test` | la logica del client in jsdom: percorso dell'app, API, livelli, presenza, ponte con GeoLibre, traduzioni, tema, accesso |
 | e2e locale | `npm run test:e2e` | il server in modalità `local` con dati temporanei, SQLite e relay incorporato, in un browser vero |
 | e2e server | `npm run test:e2e:stack` | un'installazione server completa — compose o Kubernetes: Keycloak, PostgreSQL, HTTPS e `wss` attraverso il proxy |
 | e2e distribuzione | `npm run test:e2e:dist` | lo zip appena costruito: eseguibile e servizio Windows |
+| sicurezza | `npm run test:security`, `npm run test:security:zap` | gli attacchi che non devono riuscire, e la scansione OWASP ZAP |
+| prestazioni | `npm run test:performance` | tempi di risposta ed errori con 20 utenti contemporanei |
+
+La mappa completa, con dove sta ogni test, è in [`tests/README.md`](tests/README.md).
 
 I test e2e sono ordinati per requisito, un file ciascuno:
 
