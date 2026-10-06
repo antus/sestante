@@ -1,0 +1,82 @@
+name: Requisito
+description: Una capacità che Sestante deve offrire, con la sua copertura attuale e la stima.
+title: "R-xxx · "
+labels: ["requisito"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un requisito per issue. Nel titolo l'identificativo `R-xxx` (il prossimo libero) e una frase breve.
+        Area, copertura e stima si aggiornano anche dal Project **Requisiti di Sestante**.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Cartografia e prima impressione
+        - Il guscio dell'interfaccia
+        - Tenancy, condivisione e collaborazione
+        - Piani, diritti d'uso e marketplace
+        - "Dati: ingestione, sorgenti e scala"
+        - "Analisi: dal browser al processo governato"
+        - Editing dei dati e lavoro sul campo
+        - Monitoraggio, allerte e gemelli digitali
+        - "AI: assistente, modelli e prodotti di rischio"
+        - Artefatti che escono dalla piattaforma
+        - "Interoperabilità: catalogo, map server e desktop"
+        - "Ecosistema: API, SDK e sistema dei plugin"
+        - Contenuti e dimostrabilità
+        - "Fondamenta tecniche: deploy, qualità e test"
+        - "Modelli BIM: il costruito dentro il territorio"
+        - "La superficie pubblica: contenuti e catalogo aperto"
+        - Conformità alle regole della pubblica amministrazione
+    validations:
+      required: true
+  - type: textarea
+    id: descrizione
+    attributes:
+      label: Descrizione
+      description: Che cosa deve poter fare chi usa Sestante, e perché serve.
+    validations:
+      required: true
+  - type: dropdown
+    id: copertura-sestante
+    attributes:
+      label: Copertura in Sestante
+      options: [assente, parziale, completo]
+    validations:
+      required: true
+  - type: textarea
+    id: nota-sestante
+    attributes:
+      label: Cosa c'è già in Sestante
+  - type: dropdown
+    id: copertura-geolibre
+    attributes:
+      label: Copertura in GeoLibre
+      options: [assente, parziale, completo, non valutata]
+  - type: textarea
+    id: nota-geolibre
+    attributes:
+      label: Cosa offre GeoLibre
+  - type: checkboxes
+    id: via
+    attributes:
+      label: Dove si implementa
+      options:
+        - label: plugin GeoLibre di Sestante
+        - label: server di Sestante
+        - label: shell (client React di Sestante)
+        - label: ponte con GeoLibre
+        - label: contributo upstream a GeoLibre
+        - label: infrastruttura e distribuzione
+        - label: fork di GeoLibre (da evitare)
+  - type: textarea
+    id: approccio
+    attributes:
+      label: Approccio proposto
+  - type: input
+    id: stima
+    attributes:
+      label: Stima (giorni, minimo – massimo)
+      placeholder: "3 – 5"
