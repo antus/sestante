@@ -6,6 +6,12 @@
  *   npm run geolibre:use -- 0692da3f…  un commit preciso (hash completo)
  *   npm run geolibre:use               mostra la versione attuale e le ultime release
  *
+ *   npm run geolibre:use -- feat/x --repo antus/GeoLibre
+ *       un ramo di un fork: una PR non ancora accettata, da provare insieme o
+ *       in Docker prima del merge. È temporaneo: accettata la PR si torna al
+ *       GeoLibre ufficiale con --repo opengeos/GeoLibre. Senza --repo resta il
+ *       repository del lock attuale. (Guida: docs/sviluppo/CONTRIBUIRE-A-GEOLIBRE.md)
+ *
  * Nel lock finisce sempre l'hash del commit: un tag o un ramo possono spostarsi,
  * il commit no, ed è quello che rende il build ripetibile. `ref` ricorda da dove
  * lo si è preso. Dopo il cambio: `npm run build:geolibre` (o `npm run setup`),
@@ -20,12 +26,23 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const lockPath = join(root, "build/geolibre/geolibre.lock.json");
 const lock = JSON.parse(readFileSync(lockPath, "utf8"));
-const wanted = process.argv[2];
+const args = process.argv.slice(2);
+const repoIndex = args.indexOf("--repo");
+const repoArg = repoIndex >= 0 ? args[repoIndex + 1] : undefined;
+const wanted = args.filter((_, i) => repoIndex < 0 || (i !== repoIndex && i !== repoIndex + 1))[0];
+
+const UPSTREAM = "https://github.com/opengeos/GeoLibre.git";
+/** "owner/nome" oppure un URL completo, sempre come URL git. */
+function repoUrl(value) {
+  if (/^[\w.-]+\/[\w.-]+$/.test(value)) return `https://github.com/${value.replace(/\.git$/, "")}.git`;
+  return value;
+}
+const repo = repoArg ? repoUrl(repoArg) : lock.repo;
 
 function lsRemote(...patterns) {
-  const result = spawnSync("git", ["ls-remote", lock.repo, ...patterns], { encoding: "utf8" });
+  const result = spawnSync("git", ["ls-remote", repo, ...patterns], { encoding: "utf8" });
   if (result.status !== 0) {
-    console.error(`\n  Impossibile interrogare ${lock.repo}:\n${result.stderr}\n`);
+    console.error(`\n  Impossibile interrogare ${repo}:\n${result.stderr}\n`);
     process.exit(1);
   }
   return result.stdout
@@ -57,6 +74,7 @@ if (!wanted) {
     [
       "",
       `  In uso:   ${lock.ref ?? "(commit)"}  →  ${lock.commit}`,
+      ...(lock.repo !== UPSTREAM ? [`  Da:       ${lock.repo}   (un fork: temporaneo, finché la PR non è accettata)`] : []),
       `  Release:  ${tags.slice(0, 8).join("  ")}`,
       "",
       "  Per cambiare:  npm run geolibre:use -- <release | ramo | commit>",
@@ -81,14 +99,14 @@ if (/^[0-9a-f]{40}$/.test(wanted)) {
   const head = refs.find((r) => r.ref === `refs/heads/${wanted}`);
   commit = (peeled ?? tag ?? head)?.hash;
   if (!commit) {
-    console.error(`\n  «${wanted}» non è una release né un ramo di ${lock.repo}.\n`);
+    console.error(`\n  «${wanted}» non è una release né un ramo di ${repo}.\n`);
     process.exit(1);
   }
   if (head && !tag) ref = `${wanted}@${new Date().toISOString().slice(0, 10)}`;
 }
 
 const next = {
-  repo: lock.repo,
+  repo,
   ref,
   commit,
   // Solo un'etichetta per le persone: il build usa `commit`.
@@ -101,6 +119,9 @@ console.log(
     "",
     `  GeoLibre fissato a ${ref}  →  ${commit}`,
     lock.commit === commit ? "  (era già questo)" : `  (prima: ${lock.ref ?? lock.commit})`,
+    ...(repo !== UPSTREAM
+      ? [`  Da un fork: ${repo}. Accettata la PR, si torna al GeoLibre ufficiale con --repo opengeos/GeoLibre.`]
+      : []),
     "",
     "  Ora:  npm run build:geolibre   poi il collaudo in docs/guida/COLLAUDO.md",
     "",

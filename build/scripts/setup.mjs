@@ -55,6 +55,8 @@ if (args.includes("--skip-geolibre")) {
   const built = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
   const upToDate =
     built?.geolibre?.commit === lock.commit &&
+    // Un build da --src (checkout di sviluppo) non è la versione fissata.
+    built?.geolibre?.repo === lock.repo &&
     built?.buildEnv?.GEOLIBRE_APP_BASE === `${appBase(root)}gis/` &&
     existsSync(join(root, ".out/geolibre/web/index.html")) &&
     existsSync(join(root, ".out/geolibre/relay/relay.cjs"));

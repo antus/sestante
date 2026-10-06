@@ -423,6 +423,7 @@ modulo **Requisito** (Issues → New issue).
 | [`docs/guida/COLLAUDO.md`](docs/guida/COLLAUDO.md) | il collaudo passo per passo, anche dopo un cambio di versione di GeoLibre |
 | [`docs/sviluppo/ARCHITETTURA.md`](docs/sviluppo/ARCHITETTURA.md) | come sono fatti server, client e ponte con GeoLibre |
 | [`docs/sviluppo/PR-GEOLIBRE-COLLAB.md`](docs/sviluppo/PR-GEOLIBRE-COLLAB.md) | la modifica proposta a GeoLibre per la collaborazione |
+| [`docs/sviluppo/CONTRIBUIRE-A-GEOLIBRE.md`](docs/sviluppo/CONTRIBUIRE-A-GEOLIBRE.md) | come si sviluppa una modifica al core di GeoLibre e la si propone con una PR |
 | [`docs/adr/`](docs/adr/README.md) | le decisioni architetturali e il loro perché |
 | [`distribution/README.md`](distribution/README.md) | quale distribuzione scegliere |
 | [`tests/README.md`](tests/README.md) | tutti i test, dove stanno e come si lanciano |

@@ -9,7 +9,7 @@
  * serve sotto /gis/.
  *
  *   node build/scripts/build-geolibre.mjs                 scarica (se serve), installa, compila
- *   node build/scripts/build-geolibre.mjs --src <cartella> usa un checkout esistente
+ *   node build/scripts/build-geolibre.mjs --src <cartella> compila un checkout di sviluppo così com'è (ramo per una PR)
  *   node build/scripts/build-geolibre.mjs --skip-build     solo plugin + copia del dist esistente
  */
 import { spawnSync } from "node:child_process";
@@ -61,26 +61,47 @@ function step(message) {
   console.log(`\n  ▸ ${message}`);
 }
 
-// ── 1. Sorgente al commit fissato ───────────────────────────────────────────
-step(`GeoLibre ${lock.version} @ ${lock.commit.slice(0, 7)} in ${src}`);
-if (!existsSync(join(src, ".git"))) {
-  mkdirSync(src, { recursive: true });
-  run("git", ["init", "--quiet"], { cwd: src });
-  run("git", ["remote", "add", "origin", lock.repo], { cwd: src });
-}
-const head = git("rev-parse", "HEAD").stdout.trim();
-if (head !== lock.commit) {
-  run("git", ["fetch", "--depth", "1", "origin", lock.commit], { cwd: src });
-  run("git", ["checkout", "--quiet", "--force", lock.commit], { cwd: src });
-}
-// Un checkout modificato a mano non è più "GeoLibre a versione fissata".
-const dirty = git("status", "--porcelain", "--untracked-files=no").stdout.trim();
-if (dirty) {
-  console.error(
-    `\n  Il checkout di GeoLibre ha modifiche locali:\n${dirty}\n` +
-      "  Il build deve partire dal sorgente originale. Annulla le modifiche e riprova.\n",
-  );
-  process.exit(1);
+// ── 1. Sorgente ─────────────────────────────────────────────────────────────
+// Con --src si compila un checkout di sviluppo così com'è (il ramo su cui si
+// prepara una PR per GeoLibre, modifiche non salvate comprese): niente
+// checkout del commit fissato. Senza --src, il sorgente è quello del lock.
+const localSource = option("--src") !== undefined;
+let source = lock;
+if (localSource) {
+  if (!existsSync(join(src, ".git"))) {
+    console.error(`\n  ${src} non è un checkout git di GeoLibre.\n`);
+    process.exit(1);
+  }
+  const branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.trim();
+  const commit = git("rev-parse", "HEAD").stdout.trim();
+  const dirty = git("status", "--porcelain", "--untracked-files=no").stdout.trim() !== "";
+  source = { repo: `local:${src}`, ref: branch, commit, version: `${branch}${dirty ? "+modifiche" : ""}`, dirty };
+  step(`GeoLibre dal checkout di sviluppo ${src} — ramo ${branch} @ ${commit.slice(0, 7)}${dirty ? ", con modifiche non salvate" : ""}`);
+  console.log("    Non è la versione fissata: npm run setup la ricompila da build/geolibre/geolibre.lock.json.");
+} else {
+  step(`GeoLibre ${lock.version} @ ${lock.commit.slice(0, 7)} in ${src}`);
+  if (!existsSync(join(src, ".git"))) {
+    mkdirSync(src, { recursive: true });
+    run("git", ["init", "--quiet"], { cwd: src });
+    run("git", ["remote", "add", "origin", lock.repo], { cwd: src });
+  }
+  const head = git("rev-parse", "HEAD").stdout.trim();
+  if (head !== lock.commit) {
+    // Dall'URL del lock, non da "origin": il commit può stare su un fork
+    // (una PR non ancora accettata), e origin resta il GeoLibre ufficiale.
+    run("git", ["fetch", "--depth", "1", lock.repo, lock.commit], { cwd: src });
+    run("git", ["checkout", "--quiet", "--force", lock.commit], { cwd: src });
+  }
+  // Un checkout modificato a mano non è più "GeoLibre a versione fissata".
+  const dirty = git("status", "--porcelain", "--untracked-files=no").stdout.trim();
+  if (dirty) {
+    console.error(
+      `\n  Il checkout di GeoLibre ha modifiche locali:\n${dirty}\n` +
+        "  Il build deve partire dal sorgente originale. Annulla le modifiche e riprova\n" +
+        "  (per compilare un ramo di sviluppo: --src <cartella del checkout>).\n",
+    );
+    process.exit(1);
+  }
 }
 
 // ── 1b. Ciò su cui si appoggia l'aggancio della collaborazione ─────────────
@@ -233,7 +254,7 @@ await build({
 writeFileSync(
   join(out, "manifest.json"),
   JSON.stringify(
-    { geolibre: lock, plugins, buildEnv, builtAt: new Date().toISOString() },
+    { geolibre: source, plugins, buildEnv, builtAt: new Date().toISOString() },
     null,
     2,
   ) + "\n",

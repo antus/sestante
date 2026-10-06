@@ -15,6 +15,7 @@ Una decisione non si modifica: se cambia idea, se ne scrive una nuova che la
 | [0004](0004-distribuzioni.md) | Quattro distribuzioni dallo stesso codice | accettata |
 | [0005](0005-requisiti-su-github.md) | I requisiti come issue GitHub e un Project | accettata |
 | [0006](0006-struttura-del-repository.md) | Struttura del repository per ruolo | accettata |
+| [0007](0007-modifiche-al-core-di-geolibre.md) | Le modifiche al core di GeoLibre si fanno su un ramo e si propongono con una PR | accettata |
 
 ## Modello
 
