@@ -59,9 +59,13 @@ che lo script riporta sempre al commit del lock.
 4. **Prima della PR**, nel checkout di GeoLibre:
 
    ```bash
-   pre-commit run --files <i file modificati>
+   pre-commit run --files <i file modificati>   # oppure: python -m pre_commit run --files …
    npm run ci:web
    ```
+
+   `pre-commit` si installa una volta con `python -m pip install --user pre-commit`;
+   su Windows, se il comando non si trova, `python -m pre_commit` funziona
+   comunque.
 
    e in Sestante gli e2e (`npm run test:e2e`) con il build del ramo.
 

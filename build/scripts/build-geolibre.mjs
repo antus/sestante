@@ -141,7 +141,14 @@ const lockFile = join(src, "package-lock.json");
 const installedMarker = join(src, "node_modules", ".sestante-lock-sha256");
 const lockHash = createHash("sha256").update(readFileSync(lockFile)).digest("hex");
 const installedHash = existsSync(installedMarker) ? readFileSync(installedMarker, "utf8").trim() : null;
-if (installedHash !== lockHash) {
+if (localSource) {
+  // Nel checkout di sviluppo le dipendenze le gestisce chi ci lavora
+  // (npm install): reinstallarle qui butterebbe via il suo node_modules.
+  if (!existsSync(join(src, "node_modules"))) {
+    console.error(`\n  Nel checkout ${src} mancano le dipendenze: esegui prima  npm install  lì.\n`);
+    process.exit(1);
+  }
+} else if (installedHash !== lockHash) {
   step(
     existsSync(join(src, "node_modules"))
       ? "Le dipendenze di GeoLibre sono cambiate: le reinstallo"
