@@ -18,6 +18,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { AREE } from "./requisiti-aree.mjs";
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith("--"));
@@ -28,26 +29,8 @@ if (!file) {
   process.exit(1);
 }
 
-/** Aree: etichetta breve (le etichette GitHub hanno al massimo 50 caratteri) e colore. */
-export const AREE = {
-  "Cartografia e prima impressione": ["area: cartografia", "1f6feb"],
-  "Il guscio dell'interfaccia": ["area: interfaccia", "8250df"],
-  "Tenancy, condivisione e collaborazione": ["area: condivisione", "bf3989"],
-  "Piani, diritti d'uso e marketplace": ["area: piani e marketplace", "a40e26"],
-  "Dati: ingestione, sorgenti e scala": ["area: dati", "0969da"],
-  "Analisi: dal browser al processo governato": ["area: analisi", "1a7f37"],
-  "Editing dei dati e lavoro sul campo": ["area: editing e campo", "9a6700"],
-  "Monitoraggio, allerte e gemelli digitali": ["area: monitoraggio", "bc4c00"],
-  "AI: assistente, modelli e prodotti di rischio": ["area: ai", "6639ba"],
-  "Artefatti che escono dalla piattaforma": ["area: artefatti", "57606a"],
-  "Interoperabilità: catalogo, map server e desktop": ["area: interoperabilità", "0550ae"],
-  "Ecosistema: API, SDK e sistema dei plugin": ["area: ecosistema", "116329"],
-  "Contenuti e dimostrabilità": ["area: contenuti", "7d4e00"],
-  "Fondamenta tecniche: deploy, qualità e test": ["area: fondamenta", "24292f"],
-  "Modelli BIM: il costruito dentro il territorio": ["area: bim", "953800"],
-  "La superficie pubblica: contenuti e catalogo aperto": ["area: superficie pubblica", "3192aa"],
-  "Conformità alle regole della pubblica amministrazione": ["area: conformità PA", "cf222e"],
-};
+/** Etichetta della copertura: solo "parziale" e "assente"; i requisiti completi sono le issue chiuse. */
+const coperturaLabel = (c) => (c === "completo" ? null : c);
 const COPERTURA = { completo: "2da44e", parziale: "d4a72c", assente: "cf222e" };
 const VIE = {
   plugin: "plugin GeoLibre di Sestante",
@@ -116,7 +99,7 @@ function labelsOf(r) {
   return [
     "requisito",
     AREE[r.area]?.[0],
-    `sestante: ${r.sestante.copertura}`,
+    coperturaLabel(r.sestante.copertura),
     ...(r.sestante.via ?? []).map((v) => `via: ${v}`),
   ].filter(Boolean);
 }
@@ -128,7 +111,7 @@ if (unknown.length) throw new Error(`Aree sconosciute: ${[...new Set(unknown.map
 // ── Etichette ────────────────────────────────────────────────────────────────
 const wanted = new Map([["requisito", ["0e8a16", "Una capacità che Sestante deve offrire"]]]);
 for (const [area, [name, color]] of Object.entries(AREE)) wanted.set(name, [color, area]);
-for (const [name, color] of Object.entries(COPERTURA)) wanted.set(`sestante: ${name}`, [color, `Copertura in Sestante: ${name}`]);
+for (const [name, color] of Object.entries(COPERTURA)) if (coperturaLabel(name)) wanted.set(coperturaLabel(name), [color, `Copertura in Sestante: ${name}`]);
 for (const [name, description] of Object.entries(VIE)) wanted.set(`via: ${name}`, ["c5def5", description]);
 
 const existingLabels = new Set(JSON.parse(gh(["label", "list", "--repo", repo, "--limit", "500", "--json", "name"])).map((l) => l.name));
